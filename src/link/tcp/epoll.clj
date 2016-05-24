@@ -10,8 +10,28 @@
             ChannelPipeline ChannelOption]
            [io.netty.channel.epoll EpollEventLoopGroup
             EpollServerSocketChannel EpollSocketChannel]
-           [io.netty.util.concurrent EventExecutorGroup]
+           [io.netty.util.concurrent EventExecutorGroup GenericFutureListener]
            [link.core ClientSocketChannel]))
+
+(extend-protocol LinkMessageChannel
+  EpollSocketChannel
+  (id [this]
+    (channel-id this))
+  (send! [this msg]
+    (send!* this msg nil))
+  (send!* [this msg cb]
+    (let [cf (.writeAndFlush this msg)]
+      (when cb
+        (.addListener ^ChannelFuture cf (reify GenericFutureListener
+                                          (operationComplete [this f] (cb f)))))))
+  (channel-addr [this]
+    (.localAddress this))
+  (remote-addr [this]
+    (.remoteAddress this))
+  (close! [this]
+    (.close this))
+  (valid? [this]
+    (.isActive this)))
 
 (defn- start-tcp-server [host port handlers options]
   (let [boss-group (EpollEventLoopGroup.)
