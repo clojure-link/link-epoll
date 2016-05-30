@@ -7,4 +7,5 @@
                  [link "0.8.18"]
                  [io.netty/netty-transport-native-epoll "4.0.36.Final"
                   :classifier "linux-x86_64"]]
-  :profiles {:examples {:source-paths ["examples"]}})
+  :profiles {:examples {:source-paths ["examples"]}}
+  :deploy-repositories {"releases" :clojars})
