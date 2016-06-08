@@ -1,4 +1,4 @@
-(defproject link/link-epoll "0.2.1-SNAPSHOT"
+(defproject link/link-epoll "0.2.1"
   :description "epoll backend for link tcp module"
   :url "http://github.com/sunng87/link-epoll"
   :license {:name "Eclipse Public License"
