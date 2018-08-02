@@ -18,7 +18,7 @@
   (id [this]
     (channel-id this))
   (send! [this msg]
-    (send!* this msg nil))
+    (.writeAndFlush this msg (.voidPromise this)))
   (send!* [this msg cb]
     (let [cf (.writeAndFlush this msg)]
       (when cb
