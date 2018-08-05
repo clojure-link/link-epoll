@@ -18,12 +18,13 @@
   (id [this]
     (channel-id this))
   (send! [this msg]
-    (send!* this msg nil))
+    (.writeAndFlush this msg (.voidPromise this)))
   (send!* [this msg cb]
-    (let [cf (.writeAndFlush this msg)]
-      (when cb
+    (if cb
+      (let [cf (.writeAndFlush this msg)]
         (.addListener ^ChannelFuture cf (reify GenericFutureListener
-                                          (operationComplete [this f] (cb f)))))))
+                                          (operationComplete [this f] (cb f)))))
+      (.writeAndFlush this msg (.voidPromise this))))
   (channel-addr [this]
     (.localAddress this))
   (remote-addr [this]
