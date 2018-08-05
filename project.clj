@@ -4,7 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [link "0.11.4"]
+                 [link "0.12.0-SNAPSHOT"]
                  [io.netty/netty-transport-native-epoll "4.1.27.Final"
                   :classifier "linux-x86_64"]]
   :profiles {:examples {:source-paths ["examples"]}
