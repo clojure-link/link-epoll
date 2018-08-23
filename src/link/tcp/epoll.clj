@@ -49,9 +49,11 @@
       (.channel EpollServerSocketChannel)
       (.childHandler channel-initializer))
     (doseq [op parent-options]
-      (.option bootstrap (tcp/to-channel-option (op 0)) (op 1)))
+      (let [op (flatten op)]
+        (.option bootstrap (apply tcp/to-channel-option (butlast op)) (last op))))
     (doseq [op child-options]
-      (.childOption bootstrap (tcp/to-channel-option (op 0)) (op 1)))
+      (let [op (flatten op)]
+        (.childOption bootstrap (apply tcp/to-channel-option (butlast op)) (last op))))
 
     (.sync ^ChannelFuture (.bind bootstrap (InetAddress/getByName host) port))
     ;; return event loop groups so we can shutdown the server gracefully
