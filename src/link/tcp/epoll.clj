@@ -17,6 +17,8 @@
   EpollSocketChannel
   (id [this]
     (channel-id this))
+  (long-id [this]
+    (long-channel-id this))
   (send! [this msg]
     (.writeAndFlush this msg (.voidPromise this)))
   (send!* [this msg cb]
