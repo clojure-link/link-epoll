@@ -85,8 +85,8 @@
 
 (defn tcp-server [port handlers
                   & {:keys [options host]
-                     :or   {options {}
-                            host    "0.0.0.0"}}]
+                     :or {options {}
+                          host "0.0.0.0"}}]
   (let [handlers (if (sequential? handlers) handlers [handlers])]
     (start-tcp-server host
                       port
@@ -95,7 +95,7 @@
 
 (defn tcp-client-factory [handlers
                           & {:keys [options]
-                             :or   {options {}}}]
+                             :or {options {}}}]
   (let [worker-group (or (:worker-group options) (default-epoll-worker-group))
         bootstrap (Bootstrap.)
         handlers (if (sequential? handlers) handlers [handlers])
