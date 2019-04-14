@@ -6,12 +6,14 @@
   (:import [java.net InetAddress InetSocketAddress]
            [io.netty.bootstrap Bootstrap ServerBootstrap]
            [io.netty.channel ChannelInitializer Channel ChannelHandler
-            ChannelHandlerContext ChannelFuture EventLoopGroup
-            ChannelPipeline ChannelOption]
+                             ChannelHandlerContext ChannelFuture EventLoopGroup
+                             ChannelPipeline ChannelOption]
            [io.netty.channel.epoll EpollEventLoopGroup
-            EpollServerSocketChannel EpollSocketChannel]
-           [io.netty.util.concurrent EventExecutorGroup GenericFutureListener]
-           [link.core ClientSocketChannel]))
+                                   EpollServerSocketChannel EpollSocketChannel]
+           [io.netty.util.concurrent EventExecutorGroup GenericFutureListener DefaultThreadFactory]
+           [link.core ClientSocketChannel]
+           (io.netty.util.internal SystemPropertyUtil)
+           (io.netty.util NettyRuntime)))
 
 (extend-protocol LinkMessageChannel
   EpollSocketChannel
@@ -36,14 +38,26 @@
   (valid? [this]
     (.isActive this)))
 
+(defn- default-epoll-boss-group []
+  (let [group (EpollEventLoopGroup. 1 (DefaultThreadFactory. "link-epoll-boss-group"))]
+    (.setIoRatio group 100)
+    group))
+
+(defn- default-epoll-worker-group []
+  (EpollEventLoopGroup. (max 1 (SystemPropertyUtil/getInt "io.netty.eventLoopThreads"
+                                                          (* 2 (NettyRuntime/availableProcessors))))
+                        (DefaultThreadFactory. "link-epoll-worker-group")))
+
 (defn- start-tcp-server [host port handlers options]
-  (let [boss-group (EpollEventLoopGroup.)
-        worker-group (EpollEventLoopGroup.)
-        bootstrap (ServerBootstrap.)
+  (let [boss-group (or (:boss-group options) (default-epoll-boss-group))
+        worker-group (or (:worker-group options) (default-epoll-worker-group))
+        bootstrap (or (:bootstrap options) (ServerBootstrap.))
 
         channel-initializer (tcp/channel-init handlers)
 
-        options (group-by #(.startsWith (name (% 0)) "child.") (into [] options))
+        options (->> (dissoc options :boss-group :worker-group :bootstrap)
+                     (into [])
+                     (group-by #(.startsWith (name (% 0)) "child.")))
         parent-options (get options false)
         child-options (map #(vector (keyword (subs (name (% 0)) 6)) (% 1)) (get options true))]
     (doto bootstrap
@@ -61,10 +75,18 @@
     ;; return event loop groups so we can shutdown the server gracefully
     [worker-group boss-group]))
 
+(defn server-bootstrap
+  "Allow multiple server instance share the same eventloop:
+  Just use the result of this function as option in `tcp-server`"
+  []
+  {:boss-group (default-epoll-boss-group)
+   :worker-group (default-epoll-worker-group)
+   :boostrap (ServerBootstrap.)})
+
 (defn tcp-server [port handlers
                   & {:keys [options host]
-                     :or {options {}
-                          host "0.0.0.0"}}]
+                     :or   {options {}
+                            host    "0.0.0.0"}}]
   (let [handlers (if (sequential? handlers) handlers [handlers])]
     (start-tcp-server host
                       port
@@ -73,13 +95,14 @@
 
 (defn tcp-client-factory [handlers
                           & {:keys [options]
-                             :or {options {}}}]
-  (let [worker-group (EpollEventLoopGroup.)
+                             :or   {options {}}}]
+  (let [worker-group (or (:worker-group options) (default-epoll-worker-group))
         bootstrap (Bootstrap.)
         handlers (if (sequential? handlers) handlers [handlers])
 
         channel-initializer (tcp/channel-init handlers)
-        options (into [] options)]
+        options (->> (dissoc options :worker-group)
+                     (into [] options))]
 
     (doto bootstrap
       (.group worker-group)
