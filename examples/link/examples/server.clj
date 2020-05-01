@@ -17,5 +17,5 @@
   (tcp/tcp-server 9930 [(codec/netty-encoder line-codec)
                         (codec/netty-decoder line-codec)
                         handler]
-                  :options {:tcp-fastopen (int 256)})
+                  :options {:epoll.tcp-fastopen (int 256)})
   (println "Echo server started on 9930"))

@@ -2,18 +2,35 @@
   (:require [link.core :refer :all]
             [link.codec :refer [netty-encoder netty-decoder]]
             [link.tcp :as tcp]
-            [clojure.tools.logging :as logging])
+            [clojure.tools.logging :as logging]
+            [clojure.string :as string])
   (:import [java.net InetAddress InetSocketAddress]
            [io.netty.bootstrap Bootstrap ServerBootstrap]
            [io.netty.channel ChannelInitializer Channel ChannelHandler
                              ChannelHandlerContext ChannelFuture EventLoopGroup
                              ChannelPipeline ChannelOption]
-           [io.netty.channel.epoll EpollEventLoopGroup
-                                   EpollServerSocketChannel EpollSocketChannel]
+           [io.netty.channel.epoll EpollEventLoopGroup EpollServerSocketChannel
+            EpollSocketChannel EpollChannelOption]
            [io.netty.util.concurrent EventExecutorGroup GenericFutureListener DefaultThreadFactory]
            [link.core ClientSocketChannel]
            (io.netty.util.internal SystemPropertyUtil)
            (io.netty.util NettyRuntime)))
+
+(defn to-channel-option-with-epoll
+  ([co]
+   (to-channel-option-with-epoll co nil))
+  ([co clazz]
+   (let [co (name co)]
+     (if (or (string/starts-with? co "epoll.")
+             (string/starts-with? co "child.epoll."))
+       (let [co (-> co
+                    (string/replace-first #"epoll\.|child\.epoll\." "")
+                    (string/replace #"-" "_")
+                    (string/upper-case))]
+         (if clazz
+           (EpollChannelOption/valueOf ^Class clazz co)
+           (EpollChannelOption/valueOf EpollChannelOption co)))
+       (tcp/to-channel-option co clazz)))))
 
 (extend-protocol LinkMessageChannel
   EpollSocketChannel
@@ -66,10 +83,12 @@
       (.childHandler channel-initializer))
     (doseq [op parent-options]
       (let [op (flatten op)]
-        (.option bootstrap (apply tcp/to-channel-option (butlast op)) (last op))))
+        (.option bootstrap (apply to-channel-option-with-epoll (butlast op))
+                 (last op))))
     (doseq [op child-options]
       (let [op (flatten op)]
-        (.childOption bootstrap (apply tcp/to-channel-option (butlast op)) (last op))))
+        (.childOption bootstrap (apply to-channel-option-with-epoll (butlast op))
+                      (last op))))
 
     (.sync ^ChannelFuture (.bind bootstrap (InetAddress/getByName host) port))
     ;; return event loop groups so we can shutdown the server gracefully
@@ -109,6 +128,6 @@
       (.channel EpollSocketChannel)
       (.handler channel-initializer))
     (doseq [op options]
-      (.option bootstrap (tcp/to-channel-option (op 0)) (op 1)))
+      (.option bootstrap (to-channel-option-with-epoll (op 0)) (op 1)))
 
     [bootstrap worker-group]))
