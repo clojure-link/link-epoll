@@ -121,12 +121,12 @@
 
         channel-initializer (tcp/channel-init handlers)
         options (->> (dissoc options :worker-group)
-                     (into [] options))]
-
+                     (into []))]
     (doto bootstrap
       (.group worker-group)
       (.channel EpollSocketChannel)
       (.handler channel-initializer))
+
     (doseq [op options]
       (.option bootstrap (to-channel-option-with-epoll (op 0)) (op 1)))
 
