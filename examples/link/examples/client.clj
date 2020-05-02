@@ -9,10 +9,14 @@
 
 (def handler
   (create-handler
+   (on-active [ch]
+              (println "connected." ch))
    (on-message [ch msg]
                (println msg))
    (on-error [ch e]
-             (close! ch))))
+             (close! ch))
+   (on-inactive [ch]
+                (println "connection closed." ch))))
 
 (defn -main [& args]
   (println "Starting client")
@@ -22,6 +26,6 @@
                                                    :epoll.tcp_keepidle (int 2)
                                                    :epoll.tcp_keepintvl (int 3)
                                                    :epoll.tcp_keepcnt (int 5)
-                                                  :so_keepalive true})
+                                                   :so_keepalive true})
         client (tcp/tcp-client factory "127.0.0.1" 9930)]
     (send! client "100\r\n")))
