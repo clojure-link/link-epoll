@@ -29,3 +29,9 @@
                                                    :so_keepalive true})
         client (tcp/tcp-client factory "127.0.0.1" 9930)]
     (send! client "100\r\n")))
+
+;; command for dropping packets on loopback
+;;
+;; sudo tc qdisc add dev lo root netem drop 100%
+;;
+;;
